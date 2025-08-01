@@ -1,0 +1,35 @@
+# docker-compose.yml
+version: '3.8'
+
+services:
+  # FastAPI Application Service
+  api:
+    build: .  # Build the image from the Dockerfile in the current directory
+    restart: always
+    ports:
+      - "8000:8000"  # Map host port 8000 to container port 8000
+    volumes:
+      - .:/app  # Optional: Mounts your local code for live reloading during development
+    environment:
+      # The URL for the database service named 'db'
+      - DATABASE_URL=postgresql://postgres:Pass%40123@db:5432/location_app
+      - SECRET_KEY=a_very_secret_key_that_should_be_long_and_aaaaaa
+    depends_on:
+      - db  # This service depends on the 'db' service
+
+  # PostgreSQL Database Service
+  db:
+    image: postgres:16-alpine
+    restart: always
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: Pass@123 # Use the same password as in the DATABASE_URL
+      POSTGRES_DB: location_app
+    ports:
+      # Expose port 5433 on the host to connect with pgAdmin
+      - "5434:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+volumes:
+  postgres_data: # This named volume persists the database data

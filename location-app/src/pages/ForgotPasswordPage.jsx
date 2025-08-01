@@ -89,7 +89,7 @@ import { useNavigate } from "react-router-dom";
 import axios from "axios"; // Make sure to install axios: npm install axios
 
 // Define your backend API URL
-const API_URL = "http://127.0.0.1:8000";
+const API_URL = "https://3332ffc43535.ngrok-free.app";
 
 const ForgotPasswordPage = () => {
   const [formData, setFormData] = useState({ phone: "", newPassword: "" });

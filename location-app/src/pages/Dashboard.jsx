@@ -5,7 +5,7 @@ import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 
 // Define your backend API URL
-const API_URL = "https://3332ffc43535.ngrok-free.app";
+const API_URL = "https://ed41b5548e92.ngrok-free.app";
 
 // Custom hook for the live clock
 const useLiveClock = () => {

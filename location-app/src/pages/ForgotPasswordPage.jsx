@@ -1,21 +1,49 @@
+
+
 // import React, { useState } from "react";
 // import Logo from "../assets/Logo.png";
 // import { useNavigate } from "react-router-dom";
+// import axios from "axios"; // Make sure to install axios: npm install axios
+
+// // Define your backend API URL
+// const API_URL = "http://127.0.0.1:8000";
 
 // const ForgotPasswordPage = () => {
 //   const [formData, setFormData] = useState({ phone: "", newPassword: "" });
+//   const [error, setError] = useState("");
+//   const [loading, setLoading] = useState(false);
 //   const navigate = useNavigate();
 
-//   const handleChange = (e) =>
+//   const handleChange = (e) => {
 //     setFormData({ ...formData, [e.target.name]: e.target.value });
+//   };
 
-//   const handleSubmit = (e) => {
+//   const handleSubmit = async (e) => {
 //     e.preventDefault();
-//     console.log("Resetting password for", formData);
-//     // TODO: Call API to reset password
-//     // On success:
-//     alert("Password updated successfully.");
-//     navigate("/");
+//     setError("");
+//     setLoading(true);
+
+//     try {
+//       // The payload must match the PasswordReset Pydantic model in FastAPI
+//       const payload = {
+//         phone_number: formData.phone,
+//         new_password: formData.newPassword,
+//       };
+
+//       // This is the API call to your backend's /reset-password endpoint
+//       await axios.post(`${API_URL}/reset-password`, payload);
+
+//       // On success, show a message and redirect to the login page
+//       alert("Password updated successfully. Please log in with your new password.");
+//       navigate("/");
+
+//     } catch (err) {
+//       // Set a user-friendly error message
+//       setError(err.response?.data?.detail || "Password reset failed. Please check the phone number.");
+//       console.error("Password reset error:", err.response?.data);
+//     } finally {
+//       setLoading(false);
+//     }
 //   };
 
 //   return (
@@ -26,6 +54,8 @@
 //         <h2 className="text-3xl md:text-4xl font-bold text-center text-gray-800 mb-8">
 //           Reset Password
 //         </h2>
+        
+//         {error && <p className="text-red-500 bg-red-100 p-3 rounded-lg mb-4 text-center">{error}</p>}
 
 //         <form onSubmit={handleSubmit} className="space-y-5">
 //           <div>
@@ -60,9 +90,10 @@
 
 //           <button
 //             type="submit"
-//             className="w-full bg-green-600 text-white font-semibold py-3 rounded-xl hover:bg-green-700 text-lg transition duration-300"
+//             disabled={loading}
+//             className="w-full bg-green-600 text-white font-semibold py-3 rounded-xl hover:bg-green-700 text-lg transition duration-300 disabled:bg-gray-400"
 //           >
-//             Update Password
+//             {loading ? "Updating..." : "Update Password"}
 //           </button>
 //         </form>
 
@@ -70,7 +101,7 @@
 //           Back to{" "}
 //           <button
 //             onClick={() => navigate("/")}
-//             className="text-green-600 font-semibold hover:underline"
+//             className="text-green-600 font-semibold hover:underline cursor-pointer"
 //           >
 //             Login
 //           </button>
@@ -82,19 +113,18 @@
 
 // export default ForgotPasswordPage;
 
-
+// src/pages/ForgotPasswordPage.jsx
 import React, { useState } from "react";
 import Logo from "../assets/Logo.png";
 import { useNavigate } from "react-router-dom";
-import axios from "axios"; // Make sure to install axios: npm install axios
-
-// Define your backend API URL
-const API_URL = "http://127.0.0.1:8000";
+import axios from "axios";
+import { API_URL } from "../contexts/APIContext";
+import Toast from "../components/Toast"; // Import the Toast component
 
 const ForgotPasswordPage = () => {
   const [formData, setFormData] = useState({ phone: "", newPassword: "" });
-  const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [toast, setToast] = useState(null); // State for toast notifications
   const navigate = useNavigate();
 
   const handleChange = (e) => {
@@ -103,43 +133,48 @@ const ForgotPasswordPage = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setError("");
+    setToast(null);
     setLoading(true);
 
     try {
-      // The payload must match the PasswordReset Pydantic model in FastAPI
       const payload = {
         phone_number: formData.phone,
         new_password: formData.newPassword,
       };
 
-      // This is the API call to your backend's /reset-password endpoint
       await axios.post(`${API_URL}/reset-password`, payload);
 
-      // On success, show a message and redirect to the login page
-      alert("Password updated successfully. Please log in with your new password.");
-      navigate("/");
+      // Show a success toast, then navigate after a delay
+      setToast({ message: "Password updated successfully. Please log in.", type: 'success' });
+      setTimeout(() => {
+        navigate("/");
+      }, 2000);
 
     } catch (err) {
-      // Set a user-friendly error message
-      setError(err.response?.data?.detail || "Password reset failed. Please check the phone number.");
-      console.error("Password reset error:", err.response?.data);
+      // Use the toast for error messages
+      setToast({ 
+        message: err.response?.data?.detail || "Password reset failed. Please check the phone number.", 
+        type: 'error' 
+      });
     } finally {
-      setLoading(false);
+       if (toast?.type !== 'success') {
+        setLoading(false);
+      }
     }
   };
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-green-100 to-blue-100 px-4 py-6 overflow-y-auto">
+    <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-green-100 to-blue-100 px-4 py-6">
+      {/* Render the Toast component */}
+      {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
+      
       <img src={Logo} alt="Company Logo" className="h-28 md:h-40 lg:h-48 mb-4" />
 
-      <div className="bg-white p-8 sm:p-10 rounded-3xl shadow-2xl w-full max-w-md sm:max-w-lg lg:max-w-xl">
-        <h2 className="text-3xl md:text-4xl font-bold text-center text-gray-800 mb-8">
+      <div className="bg-white p-8 sm:p-10 rounded-3xl shadow-2xl w-full max-w-md">
+        <h2 className="text-3xl font-bold text-center text-gray-800 mb-8">
           Reset Password
         </h2>
         
-        {error && <p className="text-red-500 bg-red-100 p-3 rounded-lg mb-4 text-center">{error}</p>}
-
         <form onSubmit={handleSubmit} className="space-y-5">
           <div>
             <label className="block text-base font-medium text-gray-700 mb-1">
@@ -166,7 +201,7 @@ const ForgotPasswordPage = () => {
               value={formData.newPassword}
               onChange={handleChange}
               required
-              placeholder="Enter new password"
+              placeholder="Enter new password (min 8 characters)"
               className="w-full rounded-xl border-gray-300 shadow-sm focus:ring-green-500 focus:border-green-500 px-4 py-3 text-base"
             />
           </div>

@@ -1,3 +1,6 @@
+
+# # main.py
+# # --- IMPORTS ---
 # import os
 # from datetime import datetime, timedelta, timezone
 # from typing import Annotated
@@ -10,7 +13,9 @@
 # from passlib.context import CryptContext
 # from pydantic import BaseModel, Field
 # from sqlalchemy.orm import sessionmaker, Session, declarative_base
+# from sqlalchemy import ForeignKey
 
+# # --- CONFIGURATION ---
 # DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://postgres:Pass%40123@localhost:5432/Location App")
 # SECRET_KEY = os.getenv("SECRET_KEY", "a_very_secret_key_that_should_be_long_and_aaaaaa")
 # ALGORITHM = "HS256"
@@ -27,7 +32,7 @@
 #     SessionLocal = None
 #     Base = object
 
-# # --- DATABASE MODEL ---
+# # --- DATABASE MODELS ---
 # if Base is not object:
 #     class User(Base):
 #         __tablename__ = "users"
@@ -35,6 +40,16 @@
 #         name = sqlalchemy.Column(sqlalchemy.String, nullable=False)
 #         phone_number = sqlalchemy.Column(sqlalchemy.String, unique=True, index=True, nullable=False)
 #         hashed_password = sqlalchemy.Column(sqlalchemy.String, nullable=False)
+
+#     class Attendance(Base):
+#         __tablename__ = "attendance"
+#         id = sqlalchemy.Column(sqlalchemy.Integer, primary_key=True, index=True)
+#         user_id = sqlalchemy.Column(sqlalchemy.Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+#         action_type = sqlalchemy.Column(sqlalchemy.String, nullable=False)
+#         timestamp = sqlalchemy.Column(sqlalchemy.DateTime(timezone=True), nullable=False)
+#         latitude = sqlalchemy.Column(sqlalchemy.Float)
+#         longitude = sqlalchemy.Column(sqlalchemy.Float)
+
 
 # # --- PYDANTIC SCHEMAS (for data validation) ---
 # class UserCreate(BaseModel):
@@ -45,6 +60,12 @@
 # class PasswordReset(BaseModel):
 #     phone_number: str
 #     new_password: str = Field(..., min_length=8)
+    
+# class AttendanceCreate(BaseModel):
+#     action_type: str
+#     timestamp: datetime
+#     latitude: float | None = None
+#     longitude: float | None = None
 
 # class UserInDB(BaseModel):
 #     id: int
@@ -112,7 +133,7 @@
 #     return user
 
 # # --- FASTAPI APP INITIALIZATION ---
-# app = FastAPI(title="Phone & Password Auth API")
+# app = FastAPI(title="Location App API")
 
 # app.add_middleware(
 #     CORSMiddleware,
@@ -125,11 +146,7 @@
 # # --- API ENDPOINTS ---
 # @app.get("/health")
 # def health_check(db: Session = Depends(get_db)):
-#     """
-#     Checks if the API can connect to the database.
-#     """
 #     try:
-#         # Try to execute a simple query.
 #         db.execute(sqlalchemy.text("SELECT 1"))
 #         return {"status": "ok", "database": "connected"}
 #     except Exception as e:
@@ -155,7 +172,6 @@
 #     db.add(new_user)
 #     db.commit()
 #     db.refresh(new_user)
-    
 #     return new_user
 
 # @app.post("/token", response_model=Token)
@@ -175,7 +191,6 @@
 #     access_token = create_access_token(
 #         data={"sub": user.phone_number}, expires_delta=access_token_expires
 #     )
-    
 #     return {"access_token": access_token, "token_type": "bearer"}
 
 # @app.post("/reset-password")
@@ -183,47 +198,66 @@
 #     user = db.query(User).filter(User.phone_number == data.phone_number).first()
 #     if not user:
 #         raise HTTPException(status_code=404, detail="User with this phone number not found")
-
 #     user.hashed_password = get_password_hash(data.new_password)
 #     db.commit()
-    
 #     return {"message": "Password updated successfully"}
 
 # @app.get("/users/me", response_model=UserInDB)
 # async def read_users_me(current_user: Annotated[User, Depends(get_current_user)]):
 #     return current_user
 
-# # @app.on_event("startup")
-# # def on_startup():
-# #     if engine:
-# #         try:
-# #             Base.metadata.create_all(bind=engine)
-# #             print("Database tables created successfully.")
-# #         except Exception as e:
-# #             print(f"Error creating database tables: {e}")
+# @app.post("/attendance", status_code=status.HTTP_201_CREATED)
+# async def record_attendance(
+#     attendance_data: AttendanceCreate,
+#     current_user: Annotated[User, Depends(get_current_user)],
+#     db: Session = Depends(get_db)
+# ):
+#     """
+#     Records an attendance event for the currently authenticated user.
+#     """
+#     new_attendance_record = Attendance(
+#         user_id=current_user.id,
+#         action_type=attendance_data.action_type,
+#         timestamp=attendance_data.timestamp,
+#         latitude=attendance_data.latitude,
+#         longitude=attendance_data.longitude
+#     )
+#     db.add(new_attendance_record)
+#     db.commit()
+#     db.refresh(new_attendance_record)
+#     return new_attendance_record
+
+# # --- STARTUP EVENT ---
+# @app.on_event("startup")
+# def on_startup():
+#     if engine:
+#         try:
+#             Base.metadata.create_all(bind=engine)
+#             print("Database tables created successfully.")
+#         except Exception as e:
+#             print(f"Error creating database tables: {e}")
 
 
 # main.py
-# --- IMPORTS ---
 import os
 from datetime import datetime, timedelta, timezone
-from typing import Annotated
+from typing import List, Annotated
 
 import sqlalchemy
-from fastapi import Depends, FastAPI, HTTPException, status, Form
+from fastapi import Depends, FastAPI, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from jose import JWTError, jwt
 from passlib.context import CryptContext
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import sessionmaker, Session, declarative_base
-from sqlalchemy import ForeignKey
+from sqlalchemy import ForeignKey, func
 
 # --- CONFIGURATION ---
 DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://postgres:Pass%40123@localhost:5432/Location App")
-SECRET_KEY = os.getenv("SECRET_KEY", "a_very_secret_key_that_should_be_long_and_aaaaaa")
+SECRET_KEY = os.getenv("SECRET_KEY", "a_very_secret_key_that_should_be_long_and_secure")
 ALGORITHM = "HS256"
-ACCESS_TOKEN_EXPIRE_MINUTES = 30
+ACCESS_TOKEN_EXPIRE_MINUTES = 1440 # 24 hours
 
 # --- DATABASE SETUP (SQLAlchemy) ---
 try:
@@ -245,37 +279,48 @@ if Base is not object:
         phone_number = sqlalchemy.Column(sqlalchemy.String, unique=True, index=True, nullable=False)
         hashed_password = sqlalchemy.Column(sqlalchemy.String, nullable=False)
 
+    class Event(Base):
+        __tablename__ = "events"
+        id = sqlalchemy.Column(sqlalchemy.Integer, primary_key=True, index=True)
+        event_txt = sqlalchemy.Column(sqlalchemy.String, unique=True, nullable=False)
+
     class Attendance(Base):
         __tablename__ = "attendance"
         id = sqlalchemy.Column(sqlalchemy.Integer, primary_key=True, index=True)
         user_id = sqlalchemy.Column(sqlalchemy.Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
-        action_type = sqlalchemy.Column(sqlalchemy.String, nullable=False)
-        timestamp = sqlalchemy.Column(sqlalchemy.DateTime(timezone=True), nullable=False)
+        event_id = sqlalchemy.Column(sqlalchemy.Integer, ForeignKey("events.id"), nullable=False)
         latitude = sqlalchemy.Column(sqlalchemy.Float)
         longitude = sqlalchemy.Column(sqlalchemy.Float)
+        remarks_txt = sqlalchemy.Column(sqlalchemy.Text)
+        create_dttm = sqlalchemy.Column(sqlalchemy.DateTime(timezone=True), server_default=func.now())
+        create_user_id = sqlalchemy.Column(sqlalchemy.Integer, ForeignKey("users.id"), nullable=False)
 
-
-# --- PYDANTIC SCHEMAS (for data validation) ---
+# --- PYDANTIC SCHEMAS ---
 class UserCreate(BaseModel):
     name: str
-    phone_number: str = Field(..., pattern=r"^\+?[1-9]\d{1,14}$")
+    phone_number: str = Field(..., pattern=r"^\+?[1-9]\d{9,14}$") # E.164 format
     password: str = Field(..., min_length=8)
 
 class PasswordReset(BaseModel):
     phone_number: str
     new_password: str = Field(..., min_length=8)
     
+class EventOut(BaseModel):
+    id: int
+    event_txt: str
+    class Config:
+        from_attributes = True
+
 class AttendanceCreate(BaseModel):
-    action_type: str
-    timestamp: datetime
+    event_id: int
     latitude: float | None = None
     longitude: float | None = None
+    remarks_txt: str | None = None
 
 class UserInDB(BaseModel):
     id: int
     name: str
     phone_number: str
-
     class Config:
         from_attributes = True
 
@@ -338,7 +383,6 @@ async def get_current_user(token: Annotated[str, Depends(oauth2_scheme)], db: Se
 
 # --- FASTAPI APP INITIALIZATION ---
 app = FastAPI(title="Location App API")
-
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -348,18 +392,6 @@ app.add_middleware(
 )
 
 # --- API ENDPOINTS ---
-@app.get("/health")
-def health_check(db: Session = Depends(get_db)):
-    try:
-        db.execute(sqlalchemy.text("SELECT 1"))
-        return {"status": "ok", "database": "connected"}
-    except Exception as e:
-        print(f"Health check failed: {e}")
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail=f"Database connection error: {e}",
-        )
-
 @app.post("/register", response_model=UserInDB, status_code=status.HTTP_201_CREATED)
 def register_user(user: UserCreate, db: Session = Depends(get_db)):
     db_user = db.query(User).filter(User.phone_number == user.phone_number).first()
@@ -367,11 +399,7 @@ def register_user(user: UserCreate, db: Session = Depends(get_db)):
         raise HTTPException(status_code=400, detail="Phone number already registered")
     
     hashed_password = get_password_hash(user.password)
-    new_user = User(
-        name=user.name, 
-        phone_number=user.phone_number, 
-        hashed_password=hashed_password
-    )
+    new_user = User(name=user.name, phone_number=user.phone_number, hashed_password=hashed_password)
     
     db.add(new_user)
     db.commit()
@@ -379,10 +407,7 @@ def register_user(user: UserCreate, db: Session = Depends(get_db)):
     return new_user
 
 @app.post("/token", response_model=Token)
-async def login_for_access_token(
-    form_data: Annotated[OAuth2PasswordRequestForm, Depends()], 
-    db: Session = Depends(get_db)
-):
+async def login_for_access_token(form_data: Annotated[OAuth2PasswordRequestForm, Depends()], db: Session = Depends(get_db)):
     user = db.query(User).filter(User.phone_number == form_data.username).first()
     if not user or not verify_password(form_data.password, user.hashed_password):
         raise HTTPException(
@@ -392,9 +417,7 @@ async def login_for_access_token(
         )
     
     access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
-    access_token = create_access_token(
-        data={"sub": user.phone_number}, expires_delta=access_token_expires
-    )
+    access_token = create_access_token(data={"sub": user.phone_number}, expires_delta=access_token_expires)
     return {"access_token": access_token, "token_type": "bearer"}
 
 @app.post("/reset-password")
@@ -410,26 +433,29 @@ def reset_password(data: PasswordReset, db: Session = Depends(get_db)):
 async def read_users_me(current_user: Annotated[User, Depends(get_current_user)]):
     return current_user
 
+@app.get("/events", response_model=List[EventOut])
+def get_events(db: Session = Depends(get_db)):
+    """Retrieves all event types from the database."""
+    return db.query(Event).all()
+
 @app.post("/attendance", status_code=status.HTTP_201_CREATED)
-async def record_attendance(
+def record_attendance(
     attendance_data: AttendanceCreate,
     current_user: Annotated[User, Depends(get_current_user)],
     db: Session = Depends(get_db)
 ):
-    """
-    Records an attendance event for the currently authenticated user.
-    """
-    new_attendance_record = Attendance(
+    """Records an attendance event for the currently authenticated user."""
+    new_attendance = Attendance(
         user_id=current_user.id,
-        action_type=attendance_data.action_type,
-        timestamp=attendance_data.timestamp,
+        event_id=attendance_data.event_id,
         latitude=attendance_data.latitude,
-        longitude=attendance_data.longitude
+        longitude=attendance_data.longitude,
+        remarks_txt=attendance_data.remarks_txt,
+        create_user_id=current_user.id
     )
-    db.add(new_attendance_record)
+    db.add(new_attendance)
     db.commit()
-    db.refresh(new_attendance_record)
-    return new_attendance_record
+    return {"message": "Attendance recorded successfully."}
 
 # --- STARTUP EVENT ---
 @app.on_event("startup")
@@ -438,5 +464,22 @@ def on_startup():
         try:
             Base.metadata.create_all(bind=engine)
             print("Database tables created successfully.")
+            
+            # Populate events table if it's empty
+            db = SessionLocal()
+            if db.query(Event).count() == 0:
+                print("Populating events table...")
+                event_list = [
+                    "Start Work location", "End Work location",
+                    "Start Lunch break", "End Lunch break",
+                    "Start Other Break", "End Other Break",
+                    "Start Work visit", "End Work visit"
+                ]
+                for event_text in event_list:
+                    db.add(Event(event_txt=event_text))
+                db.commit()
+                print("Events table populated.")
+            db.close()
         except Exception as e:
-            print(f"Error creating database tables: {e}")
+            print(f"Error during startup: {e}")
+

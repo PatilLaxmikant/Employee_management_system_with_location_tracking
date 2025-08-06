@@ -1,274 +1,324 @@
+
+// // src/pages/Dashboard.jsx
 // import React, { useState, useEffect } from 'react';
 // import { useNavigate } from 'react-router-dom';
-// import axios from 'axios';
+// import api from '../contexts/APIContext';
+// import { useAuth } from '../contexts/AuthContext';
 
-// // Define your backend API URL
-// const API_URL = "http://127.0.0.1:8000";
+// const Toast = ({ message, type, onClose }) => {
+//   useEffect(() => {
+//     const timer = setTimeout(onClose, 3000);
+//     return () => clearTimeout(timer);
+//   }, [onClose]);
+
+//   const toastStyles = { success: 'bg-green-500', error: 'bg-red-500' };
+//   return (
+//     <div className={`fixed top-5 right-5 px-4 py-2 rounded shadow-lg text-white ${toastStyles[type]} transition-opacity duration-300 z-50`}>
+//       {message}
+//     </div>
+//   );
+// };
+
+// const useLiveClock = () => {
+//   const [time, setTime] = useState(new Date());
+//   useEffect(() => {
+//     const timerId = setInterval(() => setTime(new Date()), 1000);
+//     return () => clearInterval(timerId);
+//   }, []);
+//   return time;
+// };
+
+// const eventCategories = ['Work location', 'Lunch break', 'Other Break', 'Work visit'];
+// const getTodayStorageKey = () => `eventStatus_${new Date().toISOString().split('T')[0]}`;
 
 // const DashboardPage = () => {
-//   const [user, setUser] = useState(null);
-//   const [loading, setLoading] = useState(true);
-//   const [error, setError] = useState('');
+//   const { user, logout } = useAuth();
 //   const navigate = useNavigate();
+  
+//   const [events, setEvents] = useState([]);
+//   const [loading, setLoading] = useState(true);
+//   const [remark, setRemark] = useState('');
+//   const [selectedCategory, setSelectedCategory] = useState(eventCategories[0]);
+//   const [toast, setToast] = useState(null);
+  
+//   const [eventStatus, setEventStatus] = useState(() => {
+//     const savedStatus = localStorage.getItem(getTodayStorageKey());
+//     try {
+//       return savedStatus ? JSON.parse(savedStatus) : eventCategories.reduce((acc, cat) => ({...acc, [cat]: 'ended'}), {});
+//     } catch {
+//       return eventCategories.reduce((acc, cat) => ({...acc, [cat]: 'ended'}), {});
+//     }
+//   });
+
+//   const currentTime = useLiveClock();
+
+//   const showToast = (message, type = 'success') => setToast({ message, type });
 
 //   useEffect(() => {
-//     const fetchUserData = async () => {
-//       // Get the authentication token from local storage
-//       const token = localStorage.getItem('authToken');
-
-//       if (!token) {
-//         // If no token is found, redirect to login page
-//         navigate('/');
-//         return;
-//       }
-
+//     const fetchEvents = async () => {
 //       try {
-//         // Fetch user data from the protected '/users/me' endpoint
-//         const response = await axios.get(`${API_URL}/users/me`, {
-//           headers: {
-//             Authorization: `Bearer ${token}`,
-//           },
-//         });
-//         setUser(response.data);
+//         const eventsResponse = await api.get('/events');
+//         setEvents(eventsResponse.data);
 //       } catch (err) {
-//         // If the token is invalid or expired, the API will return an error
-//         setError('Your session has expired. Please log in again.');
-//         console.error('Failed to fetch user data:', err);
-//         // Clear the invalid token and redirect to login
-//         localStorage.removeItem('authToken');
-//         navigate('/');
+//         if (err.response?.status !== 401) showToast('Failed to fetch event data.', 'error');
 //       } finally {
 //         setLoading(false);
 //       }
 //     };
+//     if(user) fetchEvents();
+//   }, [user]);
 
-//     fetchUserData();
-//   }, [navigate]);
+//   const handleAction = (category, action) => {
+//     const eventTextToFind = `${action} ${category}`;
+//     const selectedEvent = events.find(e => e.event_txt === eventTextToFind);
+    
+//     if (!selectedEvent) return showToast(`Action "${eventTextToFind}" is not configured.`, 'error');
+//     if (!navigator.geolocation) return showToast("Geolocation is not supported.", 'error');
+
+//     navigator.geolocation.getCurrentPosition(
+//       (pos) => sendActionToServer(selectedEvent.id, eventTextToFind, category, action, pos.coords.latitude, pos.coords.longitude),
+//       () => {
+//         showToast("Could not get location. Recording action without it.", 'error');
+//         sendActionToServer(selectedEvent.id, eventTextToFind, category, action, null, null);
+//       }
+//     );
+//   };
+
+//   const sendActionToServer = async (eventId, eventText, category, action, latitude, longitude) => {
+//     try {
+//       await api.post('/attendance', { event_id: eventId, latitude, longitude, remarks_txt: remark });
+//       showToast(`Action '${eventText}' recorded!`, 'success');
+      
+//       const newStatus = { ...eventStatus, [category]: action === 'Start' ? 'started' : 'ended' };
+//       setEventStatus(newStatus);
+//       localStorage.setItem(getTodayStorageKey(), JSON.stringify(newStatus));
+//       setRemark('');
+//     } catch (err) {
+//        if (err.response?.status !== 401) showToast(`Error recording action.`, 'error');
+//     }
+//   };
 
 //   const handleLogout = () => {
-//     // Clear the token from local storage
-//     localStorage.removeItem('authToken');
-//     // Navigate back to the login page
+//     logout();
 //     navigate('/');
 //   };
 
-//   if (loading) {
-//     return (
-//       <div className="min-h-screen flex items-center justify-center bg-gray-100">
-//         <p className="text-xl font-semibold">Loading Dashboard...</p>
-//       </div>
-//     );
+//   if (loading || !user) {
+//     return <div className="min-h-screen flex items-center justify-center text-xl font-semibold">Loading Dashboard...</div>;
 //   }
 
-//   if (error) {
-//      // This part is handled by the redirect in useEffect, but it's good for robustness
-//     return (
-//         <div className="min-h-screen flex items-center justify-center bg-red-50">
-//             <p className="text-xl font-semibold text-red-600">{error}</p>
-//         </div>
-//     );
-//   }
+//   const isCurrentCategoryStarted = eventStatus[selectedCategory] === 'started';
 
 //   return (
-//     <div className="min-h-screen bg-gradient-to-br from-green-100 to-blue-100 flex flex-col items-center justify-center p-4">
-//       <div className="bg-white p-8 sm:p-10 rounded-3xl shadow-2xl w-full max-w-md text-center">
-//         <h1 className="text-3xl md:text-4xl font-bold text-gray-800 mb-4">Welcome!</h1>
-        
-//         {user && (
-//           <div className="bg-green-50 p-6 rounded-xl border-2 border-dashed border-green-200 space-y-2">
-//             <p className="text-lg text-gray-600">You are logged in as:</p>
-//             <p className="text-2xl font-semibold text-green-800">{user.name}</p>
-//             <p className="text-md text-gray-500">{user.phone_number}</p>
-//           </div>
-//         )}
+//     <div className="min-h-screen bg-gray-50 p-4 sm:p-6">
+//       <div className="w-full max-w-2xl mx-auto">
+//         <header className="bg-white p-6 rounded-2xl shadow-md mb-6">
+//           <h1 className="text-2xl sm:text-3xl font-bold text-gray-800">Welcome, {user.name}!</h1>
+//           <p className="text-md sm:text-lg text-gray-500 mt-1">{currentTime.toLocaleDateString('en-US', { dateStyle: 'full' })}</p>
+//           <p className="text-2xl font-mono font-semibold text-green-600 mt-2">{currentTime.toLocaleTimeString()}</p>
+//         </header>
 
-//         <button
-//           onClick={handleLogout}
-//           className="w-full mt-8 bg-red-600 text-white font-semibold py-3 rounded-xl hover:bg-red-700 text-lg transition duration-300"
-//         >
-//           Logout
-//         </button>
+//         <div className="bg-white p-6 rounded-2xl shadow-md">
+//             <div className="mb-4">
+//                 <label htmlFor="category-select" className="block text-base font-medium text-gray-700 mb-2">Select Category</label>
+//                 <select id="category-select" value={selectedCategory} onChange={(e) => setSelectedCategory(e.target.value)} className="w-full rounded-xl border-gray-300 shadow-sm p-3 text-lg focus:ring-green-500 focus:border-green-500">
+//                     {eventCategories.map(cat => <option key={cat} value={cat}>{cat}</option>)}
+//                 </select>
+//             </div>
+            
+//             <div className="mb-6">
+//               <label htmlFor="remark" className="block text-base font-medium text-gray-700 mb-2">Remark (Optional)</label>
+//               <input id="remark" type="text" value={remark} onChange={(e) => setRemark(e.target.value)} placeholder="Add a comment for your next action..." className="w-full rounded-xl border-gray-300 shadow-sm p-3 focus:ring-green-500 focus:border-green-500" />
+//             </div>
+
+//             <div className="flex gap-4">
+//                 <button onClick={() => handleAction(selectedCategory, 'Start')} disabled={isCurrentCategoryStarted} className="flex-1 p-3 text-white font-bold text-base rounded-xl shadow-lg bg-green-600 hover:bg-green-700 transition-colors duration-300 disabled:bg-gray-400 disabled:cursor-not-allowed">Start</button>
+//                 <button onClick={() => handleAction(selectedCategory, 'End')} disabled={!isCurrentCategoryStarted} className="flex-1 p-3 text-white font-bold text-base rounded-xl shadow-lg bg-red-600 hover:bg-red-700 transition-colors duration-300 disabled:bg-gray-400 disabled:cursor-not-allowed">End</button>
+//             </div>
+//         </div>
+        
+//         <div className="w-full mt-6 flex justify-end">
+//             <button onClick={handleLogout} className="bg-red-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-red-700">Logout</button>
+//         </div>
 //       </div>
+
+//       {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
 //     </div>
 //   );
 // };
 
 // export default DashboardPage;
 
+
+// src/pages/Dashboard.jsx
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import axios from 'axios';
+import api from '../contexts/APIContext'; // The configured axios instance
+import { useAuth } from '../contexts/AuthContext'; // To get user data and logout function
+import Toast from '../components/Toast'; // The reusable Toast component
 
-// Define your backend API URL
-const API_URL = "http://127.0.0.1:8000";
-
-// Custom hook for the live clock
+// Custom hook for a live-updating clock
 const useLiveClock = () => {
   const [time, setTime] = useState(new Date());
-
   useEffect(() => {
     const timerId = setInterval(() => setTime(new Date()), 1000);
     return () => clearInterval(timerId);
   }, []);
-
   return time;
 };
 
-// Main Dashboard Component
+// Define the base categories for the UI dropdown
+const eventCategories = ['Work location', 'Lunch break', 'Other Break', 'Work visit'];
+
+// Helper function to generate a unique localStorage key for the current day
+const getTodayStorageKey = () => `eventStatus_${new Date().toISOString().split('T')[0]}`;
+
 const DashboardPage = () => {
-  const [user, setUser] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
-  const [buttonStates, setButtonStates] = useState({
-    entry: false,
-    lunchStart: false,
-    lunchEnd: false,
-    exit: false,
-  });
+  const { user, logout } = useAuth(); // Get user data and logout function from context
   const navigate = useNavigate();
+  
+  const [events, setEvents] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [remark, setRemark] = useState('');
+  const [selectedCategory, setSelectedCategory] = useState(eventCategories[0]);
+  const [toast, setToast] = useState(null);
+  
+  // Initialize the status of events from localStorage to persist UI state on refresh
+  const [eventStatus, setEventStatus] = useState(() => {
+    const todayKey = getTodayStorageKey();
+    const savedStatus = localStorage.getItem(todayKey);
+    try {
+      // If there's saved data for today, parse it.
+      return savedStatus ? JSON.parse(savedStatus) : eventCategories.reduce((acc, cat) => ({...acc, [cat]: 'ended'}), {});
+    } catch {
+      // If parsing fails, return the default state.
+      return eventCategories.reduce((acc, cat) => ({...acc, [cat]: 'ended'}), {});
+    }
+  });
+
   const currentTime = useLiveClock();
 
-  // Fetch user data on component mount
-  useEffect(() => {
-    const fetchUserData = async () => {
-      const token = localStorage.getItem('authToken');
-      if (!token) {
-        navigate('/');
-        return;
-      }
+  // Function to display a toast notification
+  const showToast = (message, type = 'success') => setToast({ message, type });
 
+  // Effect to fetch event types from the server when the component mounts
+  useEffect(() => {
+    const fetchEvents = async () => {
       try {
-        const response = await axios.get(`${API_URL}/users/me`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        setUser(response.data);
+        const eventsResponse = await api.get('/events');
+        setEvents(eventsResponse.data);
       } catch (err) {
-        setError('Session expired. Please log in again.');
-        localStorage.removeItem('authToken');
-        navigate('/');
+        // The API interceptor will handle 401, but we can show errors for other issues.
+        if (err.response?.status !== 401) {
+            showToast('Failed to fetch event data.', 'error');
+        }
       } finally {
         setLoading(false);
       }
     };
+    // Only fetch events once the user object is available from the AuthContext
+    if(user) {
+        fetchEvents();
+    }
+  }, [user]);
 
-    fetchUserData();
-  }, [navigate]);
-
-  // Function to handle button clicks
-  const handleAction = (actionType) => {
-    // Get current location
-    if (!navigator.geolocation) {
-      alert("Geolocation is not supported by your browser.");
-      return;
+  /**
+   * Handles the click on a "Start" or "End" button.
+   */
+  const handleAction = (category, action) => {
+    const eventTextToFind = `${action} ${category}`;
+    const selectedEvent = events.find(e => e.event_txt === eventTextToFind);
+    
+    if (!selectedEvent) {
+        return showToast(`Action "${eventTextToFind}" is not configured.`, 'error');
     }
 
+    if (!navigator.geolocation) {
+      return showToast("Geolocation is not supported by your browser.", 'error');
+    }
+
+    // Get user's location and then send the action to the server
     navigator.geolocation.getCurrentPosition(
-      (position) => {
-        const { latitude, longitude } = position.coords;
-        sendActionToServer(actionType, latitude, longitude);
-      },
-      (error) => {
-        console.error("Error getting location:", error);
-        // Still send action, but without location data
-        sendActionToServer(actionType, null, null);
-        alert("Could not get location. Action will be recorded without it.");
+      (position) => sendActionToServer(selectedEvent.id, eventTextToFind, category, action, position.coords.latitude, position.coords.longitude),
+      () => {
+        showToast("Could not get location. Action recorded without it.", 'error');
+        // Proceed to record the action even if location fails
+        sendActionToServer(selectedEvent.id, eventTextToFind, category, action, null, null);
       }
     );
   };
 
-  // Function to send data to the backend
-  const sendActionToServer = async (actionType, latitude, longitude) => {
-    const token = localStorage.getItem('authToken');
+  /**
+   * Sends the recorded action to the backend and updates the persistent UI state.
+   */
+  const sendActionToServer = async (eventId, eventText, category, action, latitude, longitude) => {
     try {
-      const payload = {
-        action_type: actionType,
-        timestamp: new Date().toISOString(),
-        latitude,
-        longitude,
-      };
+      const payload = { event_id: eventId, latitude, longitude, remarks_txt: remark };
+      await api.post('/attendance', payload);
+      showToast(`Action '${eventText}' recorded successfully!`, 'success');
+      
+      // Update the state and persist it to localStorage for the current day.
+      const newStatus = { ...eventStatus, [category]: action === 'Start' ? 'started' : 'ended' };
+      setEventStatus(newStatus);
+      localStorage.setItem(getTodayStorageKey(), JSON.stringify(newStatus));
 
-      await axios.post(`${API_URL}/attendance`, payload, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-
-      alert(`Action '${actionType}' recorded successfully!`);
-
-      // Update button disabled states
-      if (actionType === 'Office Entry') setButtonStates(prev => ({ ...prev, entry: true }));
-      if (actionType === 'Start Lunch') setButtonStates(prev => ({ ...prev, lunchStart: true }));
-      if (actionType === 'End Lunch') setButtonStates(prev => ({ ...prev, lunchEnd: true }));
-      if (actionType === 'Office Exit') setButtonStates(prev => ({ ...prev, exit: true }));
-
+      setRemark(''); // Clear remark input on success
     } catch (err) {
-      console.error(`Failed to record action '${actionType}':`, err);
-      alert(`Error: Could not record action '${actionType}'.`);
+       if (err.response?.status !== 401) {
+            showToast(`Error: Could not record action '${eventText}'.`, 'error');
+       }
     }
   };
 
-  if (loading) {
-    return <div className="min-h-screen flex items-center justify-center bg-gray-100"><p className="text-xl font-semibold">Loading Dashboard...</p></div>;
+  // Handles user logout using the function from AuthContext
+  const handleLogout = () => {
+    logout();
+    navigate('/');
+  };
+
+  // Show a loading screen while user data or events are being fetched
+  if (loading || !user) {
+    return <div className="min-h-screen flex items-center justify-center text-xl font-semibold">Loading Dashboard...</div>;
   }
 
+  const isCurrentCategoryStarted = eventStatus[selectedCategory] === 'started';
+
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col items-center p-4 sm:p-6">
+    <div className="min-h-screen bg-gray-50 p-4 sm:p-6">
+      {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
       <div className="w-full max-w-2xl mx-auto">
-        {/* Welcome Header */}
-        <div className="bg-white p-6 rounded-2xl shadow-md mb-6">
-          <h1 className="text-2xl sm:text-3xl font-bold text-gray-800">
-            Welcome, {user ? user.name : 'Employee'}!
-          </h1>
-          <p className="text-md sm:text-lg text-gray-500 mt-1">
-            {currentTime.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
-          </p>
-          <p className="text-2xl font-mono font-semibold text-green-600 mt-2">
-            {currentTime.toLocaleTimeString()}
-          </p>
-        </div>
+        {/* Header */}
+        <header className="bg-white p-6 rounded-2xl shadow-md mb-6">
+          <h1 className="text-2xl sm:text-3xl font-bold text-gray-800">Welcome, {user.name}!</h1>
+          <p className="text-md sm:text-lg text-gray-500 mt-1">{currentTime.toLocaleDateString('en-US', { dateStyle: 'full' })}</p>
+          <p className="text-2xl font-mono font-semibold text-green-600 mt-2">{currentTime.toLocaleTimeString()}</p>
+        </header>
 
-        {/* Action Buttons Grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <ActionButton onClick={() => handleAction('Office Entry')} disabled={buttonStates.entry}>Mark Office Entry</ActionButton>
-          <ActionButton onClick={() => handleAction('Office Exit')} disabled={buttonStates.exit} color="red">Mark Office Exit</ActionButton>
-          <ActionButton onClick={() => handleAction('Start Lunch')} disabled={buttonStates.lunchStart} color="yellow">Start Lunch</ActionButton>
-          <ActionButton onClick={() => handleAction('End Lunch')} disabled={buttonStates.lunchEnd} color="yellow">End Lunch</ActionButton>
-          <ActionButton onClick={() => handleAction('Start Other Work')} color="blue">Start Other Work</ActionButton>
-          <ActionButton onClick={() => handleAction('End Other Work')} color="blue">End Other Work</ActionButton>
-        </div>
+        {/* Main actions card */}
+        <div className="bg-white p-6 rounded-2xl shadow-md">
+            <div className="mb-4">
+                <label htmlFor="category-select" className="block text-base font-medium text-gray-700 mb-2">Select Category</label>
+                <select id="category-select" value={selectedCategory} onChange={(e) => setSelectedCategory(e.target.value)} className="w-full rounded-xl border-gray-300 shadow-sm p-3 text-lg focus:ring-green-500 focus:border-green-500">
+                    {eventCategories.map(cat => <option key={cat} value={cat}>{cat}</option>)}
+                </select>
+            </div>
+            
+            <div className="mb-6">
+              <label htmlFor="remark" className="block text-base font-medium text-gray-700 mb-2">Remark (Optional)</label>
+              <input id="remark" type="text" value={remark} onChange={(e) => setRemark(e.target.value)} placeholder="Add a comment for your next action..." className="w-full rounded-xl border-gray-300 shadow-sm p-3 focus:ring-green-500 focus:border-green-500" />
+            </div>
 
-        {/* Logout Button */}
-        <div className="mt-6">
-           <button
-             onClick={() => {
-               localStorage.removeItem('authToken');
-               navigate('/');
-             }}
-             className="w-full bg-gray-700 text-white font-semibold py-3 rounded-xl hover:bg-gray-800 text-lg transition duration-300"
-           >
-             Logout
-           </button>
+            <div className="flex gap-4">
+                <button onClick={() => handleAction(selectedCategory, 'Start')} disabled={isCurrentCategoryStarted} className="flex-1 p-3 text-white font-bold text-base rounded-xl shadow-lg bg-green-600 hover:bg-green-700 cursor-pointer transition-colors duration-300 disabled:bg-gray-400 disabled:cursor-not-allowed">Start</button>
+                <button onClick={() => handleAction(selectedCategory, 'End')} disabled={!isCurrentCategoryStarted} className="flex-1 p-3 text-white font-bold text-base rounded-xl shadow-lg bg-red-600 hover:bg-red-700 cursor-pointer transition-colors duration-300 disabled:bg-gray-400 disabled:cursor-not-allowed">End</button>
+            </div>
+        </div>
+        
+        <div className="w-full mt-6 flex justify-end">
+            <button onClick={handleLogout} className="bg-red-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-red-700 cursor-pointer">Logout</button>
         </div>
       </div>
     </div>
-  );
-};
-
-// Reusable ActionButton component
-const ActionButton = ({ children, onClick, disabled = false, color = 'green' }) => {
-  const colors = {
-    green: 'bg-green-600 hover:bg-green-700 focus-visible:ring-green-500',
-    red: 'bg-red-600 hover:bg-red-700 focus-visible:ring-red-500',
-    yellow: 'bg-yellow-500 hover:bg-yellow-600 focus-visible:ring-yellow-400',
-    blue: 'bg-blue-600 hover:bg-blue-700 focus-visible:ring-blue-500',
-  };
-
-  return (
-    <button
-      onClick={onClick}
-      disabled={disabled}
-      className={`w-full p-4 sm:p-6 text-white font-bold text-lg rounded-xl shadow-lg transition-transform transform hover:scale-105 focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 disabled:bg-gray-400 disabled:cursor-not-allowed disabled:transform-none ${colors[color]}`}
-    >
-      {children}
-    </button>
   );
 };
 

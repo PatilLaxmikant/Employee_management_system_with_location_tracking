@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 
 # # main.py
 # # --- IMPORTS ---
@@ -239,6 +240,11 @@
 
 
 # main.py
+=======
+
+# # main.py
+# # --- IMPORTS ---
+>>>>>>> 13467718b050f1d517ff2b489a12ceb6c68c865b
 import os
 from datetime import datetime, timedelta, timezone
 from typing import List, Annotated
@@ -254,8 +260,16 @@ from sqlalchemy.orm import sessionmaker, Session, declarative_base
 from sqlalchemy import ForeignKey, func
 
 # --- CONFIGURATION ---
+<<<<<<< HEAD
 DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://postgres:Pass%40123@localhost:5432/Location App")
 SECRET_KEY = os.getenv("SECRET_KEY", "a_very_secret_key_that_should_be_long_and_secure")
+=======
+# DATABASE_URL = "postgresql://postgres:Pass%40123@localhost:5433/location_app"
+# DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://postgres:mypassword@localhost:5432/Location App")
+# docker run --name locationapp_db -e POSTGRES_USER=myuser -e POSTGRES_PASSWORD=mypassword -e POSTGRES_DB=mydatabase -p 5432:5432 -d postgres
+DATABASE_URL = os.getenv("DATABASE_URL")
+SECRET_KEY = os.getenv("SECRET_KEY", "a_very_secret_key_that_should_be_long_and_aaaaaa")
+>>>>>>> 13467718b050f1d517ff2b489a12ceb6c68c865b
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 1440 # 24 hours
 
@@ -392,6 +406,21 @@ app.add_middleware(
 )
 
 # --- API ENDPOINTS ---
+<<<<<<< HEAD
+=======
+@app.get("/")
+def health_check(db: Session = Depends(get_db)):
+    try:
+        db.execute(sqlalchemy.text("SELECT 1"))
+        return {"status": "ok", "database": "connected"}
+    except Exception as e:
+        print(f"Health check failed: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=f"Database connection error: {e}",
+        )
+
+>>>>>>> 13467718b050f1d517ff2b489a12ceb6c68c865b
 @app.post("/register", response_model=UserInDB, status_code=status.HTTP_201_CREATED)
 def register_user(user: UserCreate, db: Session = Depends(get_db)):
     db_user = db.query(User).filter(User.phone_number == user.phone_number).first()

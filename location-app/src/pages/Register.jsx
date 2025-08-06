@@ -69,9 +69,17 @@ import React, { useState } from "react";
 import AuthForm from "../components/AuthForm";
 import Logo from "../assets/Logo.png";
 import { useNavigate } from "react-router-dom";
+<<<<<<< HEAD
 import axios from "axios";
 import { API_URL } from "../contexts/APIContext";
 import Toast from "../components/Toast"; // Import the Toast component
+=======
+import axios from "axios"; // Make sure to install axios: npm install axios
+
+// Define your backend API URL. It's good practice to keep this in a config file.
+const API_URL = "https://ed41b5548e92.ngrok-free.app";
+// const API_URL = "http://127.0.0.1:8000";
+>>>>>>> 13467718b050f1d517ff2b489a12ceb6c68c865b
 
 const RegisterPage = () => {
   const [formData, setFormData] = useState({ name: "", phone: "", password: "" });
@@ -118,12 +126,18 @@ const RegisterPage = () => {
   };
 
   return (
+<<<<<<< HEAD
     <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-blue-100 to-green-100 px-4 py-6">
       {/* Render the Toast component */}
       {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
 
       <img src={Logo} alt="Company Logo" className="h-28 md:h-40 lg:h-48 mb-4" />
       
+=======
+    <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-green-100 to-blue-100 px-4 py-6 overflow-y-auto">
+      <img src={Logo} alt="Company Logo" className="h-28 md:h-40 lg:h-40 mb-4" />
+      {error && <p className="text-red-500 bg-red-100 p-3 rounded-lg mb-4 text-center">{error}</p>}
+>>>>>>> 13467718b050f1d517ff2b489a12ceb6c68c865b
       <AuthForm
         isLogin={false}
         formData={formData}

@@ -1,7 +1,9 @@
+# requirements.txt
 fastapi
 uvicorn[standard]
 sqlalchemy
 psycopg2-binary
 python-jose[cryptography]
 passlib[bcrypt]
+pydantic
 python-multipart

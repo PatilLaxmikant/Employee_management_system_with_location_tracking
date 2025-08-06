@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 
 // // src/pages/Dashboard.jsx
 // import React, { useState, useEffect } from 'react';
@@ -148,6 +149,9 @@
 // };
 
 // export default DashboardPage;
+=======
+
+>>>>>>> 13467718b050f1d517ff2b489a12ceb6c68c865b
 
 
 // src/pages/Dashboard.jsx
@@ -157,7 +161,14 @@ import api from '../contexts/APIContext'; // The configured axios instance
 import { useAuth } from '../contexts/AuthContext'; // To get user data and logout function
 import Toast from '../components/Toast'; // The reusable Toast component
 
+<<<<<<< HEAD
 // Custom hook for a live-updating clock
+=======
+// Define your backend API URL
+const API_URL = "https://ed41b5548e92.ngrok-free.app";
+
+// Custom hook for the live clock
+>>>>>>> 13467718b050f1d517ff2b489a12ceb6c68c865b
 const useLiveClock = () => {
   const [time, setTime] = useState(new Date());
   useEffect(() => {

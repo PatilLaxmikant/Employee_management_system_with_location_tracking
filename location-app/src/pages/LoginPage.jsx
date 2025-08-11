@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 
 
 // import React, { useState } from "react";
@@ -71,26 +70,15 @@
 // export default LoginPage;
 
 // src/pages/LoginPage.jsx
-=======
->>>>>>> 13467718b050f1d517ff2b489a12ceb6c68c865b
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
 
 import AuthForm from "../components/AuthForm";
 import Logo from "../assets/Logo.png";
-<<<<<<< HEAD
 import Toast from "../components/Toast";
 import { useAuth } from "../contexts/AuthContext";
 import { API_URL } from "../contexts/APIContext";
-=======
-import { useNavigate } from "react-router-dom";
-import axios from "axios"; // Make sure to install axios: npm install axios
-
-// Define your backend API URL
-const API_URL = "https://ed41b5548e92.ngrok-free.app";
-// const API_URL = "http://127.0.0.1:8000";
->>>>>>> 13467718b050f1d517ff2b489a12ceb6c68c865b
 
 const LoginPage = () => {
   const [formData, setFormData] = useState({ phone: "", password: "" });
@@ -135,12 +123,11 @@ const LoginPage = () => {
       });
 
       const userData = userResponse.data;
-
       // 3. Store token and user data in the global context and localStorage
       login(accessToken, userData);
 
       // 4. Redirect to the appropriate dashboard based on user role
-      if (userData.is_admin=="true") {
+      if (userData.is_admin) {
         navigate("/admin");
       } else {
         navigate("/dashboard");
@@ -158,18 +145,12 @@ const LoginPage = () => {
   };
 
   return (
-<<<<<<< HEAD
     <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-green-100 to-blue-100 px-4 py-6">
       {/* Render the Toast component when a message is set */}
       {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
       
       <img src={Logo} alt="Company Logo" className="h-28 md:h-40 lg:h-48 mb-4" />
       
-=======
-    <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-green-100 to-blue-100 px-4 py-6 overflow-y-auto">
-      <img src={Logo} alt="Company Logo" className="h-28 md:h-40 lg:h-40 mb-4" />
-      {error && <p className="text-red-500 bg-red-100 p-3 rounded-lg mb-4">{error}</p>}
->>>>>>> 13467718b050f1d517ff2b489a12ceb6c68c865b
       <AuthForm
         isLogin
         formData={formData}

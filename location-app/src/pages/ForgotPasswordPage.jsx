@@ -117,16 +117,9 @@
 import React, { useState } from "react";
 import Logo from "../assets/Logo.png";
 import { useNavigate } from "react-router-dom";
-<<<<<<< HEAD
 import axios from "axios";
 import { API_URL } from "../contexts/APIContext";
 import Toast from "../components/Toast"; // Import the Toast component
-=======
-import axios from "axios"; // Make sure to install axios: npm install axios
-
-// Define your backend API URL
-const API_URL = "https://ed41b5548e92.ngrok-free.app";
->>>>>>> 13467718b050f1d517ff2b489a12ceb6c68c865b
 
 const ForgotPasswordPage = () => {
   const [formData, setFormData] = useState({ phone: "", newPassword: "" });
